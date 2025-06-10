@@ -1,0 +1,35 @@
+# Multimodal RAG System Configuration
+
+gcp:
+  project_id: "your-gcp-project-id"
+  dataset_id: "multimodal_rag"
+  table_id: "multimodal_embeddings"
+  region: "me-central1"  # Middle East (Doha) — closest to UAE
+
+storage:
+  bucket: "your-image-bucket"
+  prefix: "images/"
+  allowed_extensions: [".jpg", ".jpeg", ".png", ".webp"]
+
+clip:
+  model_name: "openai/clip-vit-base-patch32"
+  embedding_dim: 512
+  batch_size: 32
+  device: "auto"  # auto, cpu, cuda
+
+gemini:
+  api_key: "${GEMINI_API_KEY}"  # Set via environment variable
+  model: "gemini-1.5-pro"
+  temperature: 0.2
+  max_output_tokens: 1024
+  rate_limit_delay: 1.0  # seconds between API calls
+
+retrieval:
+  default_top_k: 5
+  distance_type: "COSINE"
+  similarity_threshold: 0.3  # Minimum similarity to include
+
+ingestion:
+  batch_size: 32
+  max_retries: 3
+  incremental: true  # Only process new images
