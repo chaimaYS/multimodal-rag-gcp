@@ -101,19 +101,3 @@ python -m src.rag_pipeline --query "Find images of damaged car parts"
 **Chaima Yedes** — Data & AI Architect
 - [LinkedIn](https://www.linkedin.com/in/chaima-yedes/)
 - yedeschaima5@gmail.com
-# Update 2025-06-12
-# Update 2025-06-16
-# Update 2025-06-23
-# Update 2025-06-27
-# Update 2025-07-07
-# Update 2025-07-10
-# Update 2025-07-18
-# Update 2025-07-24
-# Update 2025-07-30
-# Update 2025-08-05
-# Update 2025-08-12
-# Update 2025-08-19
-# Update 2025-08-26
-# Update 2025-09-02
-# Update 2025-09-09
-# Update 2025-09-16
