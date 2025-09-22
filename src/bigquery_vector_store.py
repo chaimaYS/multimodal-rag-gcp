@@ -213,6 +213,28 @@ class BigQueryVectorStore:
             "summarized_count": result.summarized_count,
         }
 
+    def get_collection_stats(self) -> dict:
+        """Return summary statistics for the collection."""
+        try:
+            query = f"""
+                SELECT
+                    COUNT(*) as total_images,
+                    COUNT(DISTINCT ARRAY_TO_STRING(tags, ',')) as unique_tags,
+                    512 as embedding_dim
+                FROM `{self.full_table_id}`
+            """
+            result = list(self.client.query(query).result())
+            if result:
+                row = result[0]
+                return {
+                    "total_images": row.total_images,
+                    "unique_tags": row.unique_tags,
+                    "embedding_dim": row.embedding_dim,
+                }
+        except Exception as e:
+            logger.warning(f"Failed to get stats: {e}")
+        return {"total_images": 0, "unique_tags": 0, "embedding_dim": 512}
+
     def delete_by_image_id(self, image_id: str) -> None:
         """Delete all records for a given image_id."""
         query = f"DELETE FROM `{self.full_table_id}` WHERE image_id = '{image_id}'"

@@ -134,6 +134,13 @@ class CLIPEncoder:
 
         return np.vstack(all_embeddings)
 
+    @torch.no_grad()
+    def encode_image_from_bytes(self, image_bytes: bytes) -> np.ndarray:
+        """Encode an image from raw bytes (e.g., uploaded file)."""
+        import io
+        image = Image.open(io.BytesIO(image_bytes)).convert("RGB")
+        return self.encode_image(image)
+
     def compute_similarity(self, query_embedding: np.ndarray, candidate_embeddings: np.ndarray) -> np.ndarray:
         """
         Compute cosine similarity between a query and candidate embeddings.

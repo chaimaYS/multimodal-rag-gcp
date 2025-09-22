@@ -1,103 +1,126 @@
-# Multimodal RAG System — CLIP + Gemini + BigQuery
+# Multimodal RAG Search
 
-A production-grade **Multimodal Retrieval-Augmented Generation** pipeline on Google Cloud Platform. Uses CLIP for image-text embeddings, BigQuery for vector storage and retrieval, and Gemini for intelligent image summarization.
+A visual search application that lets you query large image databases using natural language or image uploads. Built on GCP with CLIP embeddings, BigQuery vector search, and Gemini for answer generation.
+
+## What it does
+
+- **Text search**: Type "damaged front bumper on silver sedan" and get matching images with an AI-generated summary
+- **Image search**: Upload a photo and find visually similar images in the database
+- **Tag filtering**: Filter results by category (vehicle, damage type, equipment, etc.)
+- **AI answers**: Gemini synthesizes retrieved results into a coherent response
 
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────────┐
-│                        INGESTION LAYER                              │
-│                                                                     │
-│   Images ──▶ CLIP Encoder ──▶ Image Embeddings ──┐                 │
-│                                                    │                │
-│   Text   ──▶ CLIP Encoder ──▶ Text Embeddings  ──┤                 │
-│                                                    ▼                │
-│                                            ┌──────────────┐        │
-│   Images ──▶ Gemini Vision ──▶ Summaries ──▶│   BigQuery   │        │
-│                                             │  Vector Store │        │
-│                                             └──────┬───────┘        │
-└────────────────────────────────────────────────────┼────────────────┘
-                                                     │
-┌────────────────────────────────────────────────────┼────────────────┐
-│                        RETRIEVAL LAYER             │                │
-│                                                    ▼                │
-│   User Query ──▶ CLIP Encode ──▶ Vector Search (cosine similarity) │
-│                                         │                           │
-│                                         ▼                           │
-│                                  Top-K Results                      │
-│                                  (images + summaries)               │
-│                                         │                           │
-│                                         ▼                           │
-│                                  Gemini LLM ──▶ Final Answer       │
-│                                  (RAG response with context)        │
-└─────────────────────────────────────────────────────────────────────┘
+                    ┌─────────────────────────────┐
+                    │       Streamlit UI           │
+                    │  Text query / Image upload   │
+                    └─────────────┬───────────────┘
+                                  │
+                    ┌─────────────▼───────────────┐
+                    │       CLIP Encoder           │
+                    │  Text or image → 512-dim     │
+                    │  embedding vector            │
+                    └─────────────┬───────────────┘
+                                  │
+                    ┌─────────────▼───────────────┐
+                    │   BigQuery VECTOR_SEARCH     │
+                    │  Cosine similarity on        │
+                    │  millions of embeddings      │
+                    └─────────────┬───────────────┘
+                                  │
+                    ┌─────────────▼───────────────┐
+                    │       Gemini 1.5 Pro         │
+                    │  RAG: context from top-K     │
+                    │  results → final answer      │
+                    └─────────────────────────────┘
+```
+
+### Ingestion pipeline
+
+```
+GCS bucket (images)
+    │
+    ├── CLIP encode → 512-dim embedding
+    ├── Gemini Vision → text summary, detected objects, scene
+    │
+    └── Store in BigQuery:
+        embedding | summary | objects | tags | source_path | timestamp
 ```
 
 ## Tech Stack
 
-| Component | Technology |
-|-----------|-----------|
-| Embeddings | OpenAI CLIP (ViT-B/32) |
-| Image Summarization | Google Gemini 1.5 Pro (Vision) |
-| Vector Storage | BigQuery (VECTOR_SEARCH) |
-| Object Storage | Google Cloud Storage (GCS) |
-| Orchestration | Apache Airflow (Cloud Composer) |
+| Layer | Technology |
+|-------|-----------|
+| UI | Streamlit |
+| Embeddings | CLIP ViT-B/32 (512-dim, L2-normalized) |
+| Summarization | Google Gemini 1.5 Pro (Vision) |
+| Vector store | BigQuery `VECTOR_SEARCH` |
+| Object storage | Google Cloud Storage |
+| Infrastructure | Terraform, Docker |
 | Language | Python 3.10+ |
-| Infrastructure | Terraform (GCP) |
 
-## Project Structure
+## Project structure
 
 ```
-multimodal-rag-gcp/
-├── README.md
+├── app.py                          # Streamlit UI
+├── Dockerfile                      # Container build
 ├── requirements.txt
-├── src/
-│   ├── __init__.py
-│   ├── clip_encoder.py          # CLIP embedding generation
-│   ├── gemini_summarizer.py     # Gemini Vision image summarization
-│   ├── bigquery_vector_store.py # BigQuery storage & vector search
-│   ├── rag_pipeline.py          # End-to-end RAG retrieval
-│   └── ingestion_pipeline.py    # Batch ingestion orchestration
 ├── config/
-│   └── config.yml               # Project configuration
-├── notebooks/
-│   └── demo_rag_query.ipynb     # Interactive demo notebook
+│   └── config.yml                  # GCP project, dataset, model config
+├── src/
+│   ├── clip_encoder.py             # CLIP embedding (image + text)
+│   ├── gemini_summarizer.py        # Gemini Vision image summarization
+│   ├── bigquery_vector_store.py    # BigQuery storage + vector search
+│   ├── rag_pipeline.py             # End-to-end RAG retrieval + generation
+│   └── ingestion_pipeline.py       # Batch ingestion from GCS
 ├── tests/
-│   └── test_pipeline.py         # Unit tests
+│   └── test_pipeline.py
 └── docs/
-    └── design_decisions.md      # Architecture decisions
+    └── design_decisions.md         # Architecture Decision Records
 ```
 
-## Quick Start
+## Getting started
 
 ```bash
 # Clone
 git clone https://github.com/chaimaYS/multimodal-rag-gcp.git
 cd multimodal-rag-gcp
 
-# Install dependencies
+# Install
 pip install -r requirements.txt
 
-# Configure GCP credentials
+# Configure
 export GOOGLE_APPLICATION_CREDENTIALS="path/to/service-account.json"
+# Edit config/config.yml with your GCP project and dataset
 
-# Run ingestion
+# Ingest images
 python -m src.ingestion_pipeline --source gs://your-bucket/images/
 
-# Query the RAG system
-python -m src.rag_pipeline --query "Find images of damaged car parts"
+# Launch the UI
+streamlit run app.py
 ```
 
-## Key Features
+### Docker
 
-- **Multimodal Search**: Query with text, retrieve relevant images (and vice versa)
-- **Gemini Summarization**: Every image is automatically summarized by Gemini Vision
-- **BigQuery Vector Search**: Native vector similarity search — no external vector DB needed
-- **Incremental Ingestion**: Only processes new/modified images
-- **Production Patterns**: Retry logic, logging, batch processing, error handling
+```bash
+docker build -t multimodal-rag .
+docker run -p 8501:8501 -v ~/.config/gcloud:/root/.config/gcloud multimodal-rag
+```
+
+Open http://localhost:8501
+
+## Design decisions
+
+| Decision | Choice | Why |
+|----------|--------|-----|
+| Embedding model | CLIP ViT-B/32 | Shared text-image vector space, no fine-tuning needed |
+| Vector store | BigQuery | Native `VECTOR_SEARCH`, no external DB, scales to billions |
+| Summarization | Gemini 1.5 Pro | GCP-native, strong vision, structured output |
+| Similarity metric | Cosine (via dot product on L2-normalized vectors) | Standard for CLIP embeddings |
+| UI | Streamlit | Fast to build, supports image display and file upload |
 
 ## Author
 
 **Chaima Yedes** — Data & AI Architect
 - [LinkedIn](https://www.linkedin.com/in/chaima-yedes/)
-- yedeschaima5@gmail.com
